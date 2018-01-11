@@ -1,0 +1,18 @@
+=== Batch 1 model only NN list=38 ===
+%CER 18.10 [ 6459 / 35686, 1591 ins, 1353 del, 3515 sub ]
+%WER 44.70 [ 3557 / 7957, 414 ins, 557 del, 2586 sub ]
+=== Batch 1 model only NN list=12 ===
+%CER 17.52 [ 2035 / 11617, 397 ins, 418 del, 1220 sub ]
+%WER 44.59 [ 1175 / 2635, 104 ins, 199 del, 872 sub ]
+=== Final model only NN list=38 ===
+%CER 15.64 [ 5581 / 35686, 1243 ins, 1275 del, 3063 sub ]
+%WER 39.29 [ 3126 / 7957, 373 ins, 521 del, 2232 sub ]
+=== Final model only NN list=12 ===
+%CER 15.19 [ 1765 / 11617, 316 ins, 400 del, 1049 sub ]
+%WER 39.35 [ 1037 / 2635, 88 ins, 182 del, 767 sub ]
+=== Final model with LM list=38 ===
+%CER 12.79 [ 4564 / 35686, 913 ins, 1307 del, 2344 sub ]
+%WER 30.00 [ 2387 / 7957, 302 ins, 486 del, 1599 sub ]
+=== Final model with LM list=12 ===
+%CER 12.37 [ 1437 / 11617, 223 ins, 409 del, 805 sub ]
+%WER 29.53 [ 778 / 2635, 72 ins, 164 del, 542 sub ]

@@ -1,0 +1,159 @@
+#!/bin/bash
+
+FN="kaldi-nbest-to-align";
+
+# @todo Reimplement this awk in python? Or maybe do the repeated n-best fusion in kaldi-nbest-word-score.py?
+
+### Check arguments ###
+if [ "$#" -lt 1 ]; then
+  echo "$FN: error: incorrect input arguments";
+  echo "
+SYNOPSIS
+  $FN ALI-TO-CHAR [SPACE_SYMB]
+
+DESCRIPTION
+  Convert n-best kaldi table to alignments removing duplicates.
+";
+  exit 1;
+fi
+
+SPACE="{space}";
+ALI2CHAR="";
+SYMBOLS="";
+
+### Tool usage ###
+tool_usage () {
+echo "
+SYNOPSIS
+  $FN [OPTIONS] NBESTFILE
+
+DESCRIPTION
+  Convert n-best kaldi table to alignments removing duplicates.
+
+OPTIONS
+  --ali-to-char FILE
+    File defining the mapping between alignments and characters.
+
+  --symbols FILE
+    Symbols table.
+
+  --space SPACE  (default=$SPACE)
+    Symbol for space.
+";
+}
+
+### Error function ###
+throw_error () { [ "$1" != "" ] && echo "$FN: error: $1"; exit 1; };
+
+
+#############################
+### Parse input arguments ###
+#############################
+OPTS=$( getopt -o h --long space:,ali-to-char:,symbols:,help -n "$FN" -- "$@" );
+[ "$?" != "0" ] && exit 1;
+eval set -- "$OPTS";
+while true; do
+  case "$1" in
+    --space )        SPACE="$2";      shift; ;;
+    --ali-to-char )  ALI2CHAR="$2";   shift; ;;
+    --symbols )      SYMBOLS="$2";    shift; ;;
+    -h | --help )  tool_usage; exit 0; ;;
+    -- )           shift; break ;;
+    * )            throw_error "unexpected input argument: $1";
+  esac
+  [ "$?" != "0" ] && exit 1;
+  shift;
+done
+
+[ "$#" = 0 ] && set -- -;
+
+### Check arguments ###
+[ "$ALI2CHAR" = "" ] && [ "$SYMBOLS" = "" ] &&
+  throw_error "either --ali-to-char or --symbols is required";
+
+
+gawk -v ali_to_char="$ALI2CHAR" -v symbols="$SYMBOLS" -v SPACE="$SPACE" -v NUM=0 '
+  BEGIN {
+    if( ali_to_char != "" )
+      while( getline < ali_to_char > 0 ) {
+        char[$1] = $2;
+        if( $3 == SPACE )
+          space = $2;
+        if( NF == 2 && blank == "" )
+          blank = $2;
+      }
+    else
+      while( getline < symbols > 0 ) {
+        char[$2] = $2;
+        if( $1 == SPACE )
+          space = $2;
+        blank = 1;
+      }
+  }
+  { if( SAMP == "" ) {
+      SAMP = gensub(/-[0-9]+$/,"",1,$1);
+      if( SAMP != SAMPSET ) {
+        for( n=1; n<=NUM; n++ )
+          print( SAMPSET " " sLOGL[n] " " sVALS[n] );
+        NUM = 0;
+        delete IDX;
+        delete sIDX;
+        delete sVALS;
+        delete sLOGL;
+      }
+    }
+    else if( NF == 4 ) {
+      split($4,v,",");
+      LOGL -= v[1]+v[2];
+      if( v[3] != "" )
+        VALS = ( VALS " " v[3] );
+    }
+    else if( $0 == "" ) {
+      $0 = gensub(/_/," ","g",VALS);
+      for( n=1; n<=NF; n++ ) {
+        $n = char[$n];
+        if( $n != blank && ( n == 1 || $n != $(n-1) ) )
+          ID = ID" "$n;
+      }
+      VALS = $0;
+      $0 = ID;
+      for( n=1;  $n==space; n++ ) $n = ""; # remove spaces at start
+      for( n=NF; $n==space; n-- ) $n = ""; # remove spaces at end
+      for( n=2; n<NF; n++ ) if( $n == space && $n == $(n-1) ) $(n-1) = ""; # remove consecutive spaces
+      $0 = $0; $1 = $1; ID = $0; # normalize space
+      if( ID in IDX ) {
+        m = n = IDX[ID];
+        sLOGL[n] = LOGL = sLOGL[n] + log( 1 + exp(LOGL-sLOGL[n]) );
+        while( m > 1 && LOGL > sLOGL[m-1] )
+          m--;
+        if( m < n ) {
+          VALS = sVALS[n];
+          for( k=n; k>m; k-- ) {
+            IDX[sIDX[k-1]] = k;
+            sIDX[k] = sIDX[k-1];
+            sVALS[k] = sVALS[k-1];
+            sLOGL[k] = sLOGL[k-1];
+            #printf("%s k=%d displacing %g\n",k,sLOGL[k]) >> "/dev/stderr";
+          }
+          #printf("%s m=%d inserting %g\n",m,LOGL) >> "/dev/stderr";
+          IDX[ID] = m;
+          sIDX[m] = ID;
+          sVALS[m] = VALS;
+          sLOGL[m] = LOGL;
+        }
+      }
+      else {
+        IDX[ID] = ++NUM;
+        sIDX[NUM] = ID;
+        sVALS[NUM] = VALS;
+        sLOGL[NUM] = LOGL;
+      }
+      SAMPSET = SAMP;
+      SAMP = VALS = ID = "";
+      LOGL = 0;
+    }
+  }
+  END {
+    for( n=1; n<=NUM; n++ )
+      print( SAMPSET " " sLOGL[n] " " sVALS[n] );
+  }' "$1";
