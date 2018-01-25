@@ -21,8 +21,8 @@
 # docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) textfeats:active bash -c "cp /usr/local/bin/textFeats-docker $(pwd)/bin"
 
 ### Install Laia ###
-# docker pull mauvilsa/laia:2018.01.09-cuda8.0-ubuntu16.04
-# docker tag mauvilsa/laia:2018.01.09-cuda8.0-ubuntu16.04 laia:active
+# docker pull mauvilsa/laia:2018.01.25-cuda8.0-ubuntu16.04
+# docker tag mauvilsa/laia:2018.01.25-cuda8.0-ubuntu16.04 laia:active
 # docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) laia:active bash -c "cp /usr/local/bin/laia-docker $(pwd)/bin"
 
 ### Install Kaldi ###
