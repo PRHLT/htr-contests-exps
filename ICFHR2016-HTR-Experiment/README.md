@@ -5,8 +5,6 @@ Handwritten text recognition experiment using the ICFHR 2016 dataset
 - NVIDIA GPU with at least 6GB of memory
 - Recent linux distribution (only tested in Ubuntu but should work in others)
 - CUDA 8
-- docker-ce (docker runnable without the need of sudo)
-- nvidia-docker
 
 # Steps for running the experiment
 

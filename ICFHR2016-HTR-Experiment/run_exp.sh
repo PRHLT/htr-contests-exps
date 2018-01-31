@@ -9,8 +9,6 @@ set -e
 # - NVIDIA GPU with at least 6GB of memory
 # - Recent linux distribution (only tested in Ubuntu but should work in others)
 # - CUDA 8
-# - docker-ce (docker runnable without the need of sudo)
-# - nvidia-docker
 
 ### Download and extract dataset ###
 # wget https://zenodo.org/record/218236/files/PublicData.tgz
