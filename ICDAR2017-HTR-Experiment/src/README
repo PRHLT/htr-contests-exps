@@ -1,0 +1,17 @@
+# Required packages: 
+sudo apt-get install imagemagick
+sudo apt-get install libopencv-dev
+sudo apt-get install libeigen3-dev
+sudo apt-get install liblog4cxx10-dev
+sudo apt-get install libboost1.49-dev libboost-filesystem1.49-dev
+sudo apt-get install imagemagick libmagickcore-dev
+sudo apt-get install xmlstarlet
+sudo apt-get install cmake
+sudo apt-get install realpath
+sudo apt-get install flex bison
+
+cd pageContourGenerator
+make
+mv page_format_generate_contour ../../bin/
+make clean
+cd ..
