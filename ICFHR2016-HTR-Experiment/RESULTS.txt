@@ -1,0 +1,4 @@
+CER without LM	%CER 4.78 [ 1067 / 22302, 209 ins, 324 del, 534 sub ]
+WER without LM	%WER 19.35 [ 864 / 4465, 183 ins, 109 del, 572 sub ]
+CER with   LM	%CER 4.49 [ 1002 / 22302, 183 ins, 348 del, 471 sub ]
+WER with   LM	%WER 17.89 [ 795 / 4445, 182 ins, 88 del, 525 sub ]
