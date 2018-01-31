@@ -132,7 +132,7 @@ num_symbols=$[$(wc -l symbols.txt | cut -d\  -f1) - 1];
 
   # Train model
   laia-train-ctc \
-    --batch_size "32" \
+    --batch_size "16" \
     --log_also_to_stderr info \
     --log_level info \
     --log_file train.log \
@@ -151,7 +151,7 @@ num_symbols=$[$(wc -l symbols.txt | cut -d\  -f1) - 1];
   # Train model with validation
   cp model.t7 model_full.t7
   laia-train-ctc \
-    --batch_size "32" \
+    --batch_size "16" \
     --max_epochs 3 \
     --best_criterion train_cer \
     --log_also_to_stderr info \
@@ -169,7 +169,7 @@ num_symbols=$[$(wc -l symbols.txt | cut -d\  -f1) - 1];
 # Force alignment in the training to compute char priors
 [ -f align_output.txt -a -f priors.txt ] ||
 laia-force-align \
-  --batch_size "32" \
+  --batch_size "16" \
   --batcher_cache_gpu 1 \
   --log_level info \
   --log_also_to_stderr info \
@@ -215,7 +215,7 @@ ls Lines-Processed-Test/*.png > test_imgs.lst
 # Get character-level transcript hypotheses
 [ -f rec.txt ] ||
 laia-decode \
-  --batch_size "32" \
+  --batch_size "16" \
   --log_level info \
   --symbols_table symbols.txt \
   model_full.t7 test_imgs.lst > rec.txt;
@@ -238,7 +238,7 @@ rm raux taux
 # Obtaining ConfMats required by Test-LM
 [ -f confMats_ark.txt ] ||
 laia-netout \
-  --batch_size "32" \
+  --batch_size "16" \
   --batcher_cache_gpu 1 \
   --log_level info \
   --log_also_to_stderr info \
