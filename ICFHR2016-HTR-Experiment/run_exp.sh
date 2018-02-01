@@ -11,9 +11,10 @@ set -e
 # - CUDA 8
 
 ### Download and extract dataset ###
-# wget https://zenodo.org/record/218236/files/PublicData.tgz
-# tar xzf PublicData.tgz; rm PublicData.tgz
-# The Test is in: ts@tranScripTorium:/home2/tsdataupv/Bozen/Contest-data/Test/
+# wget https://zenodo.org/record/1164045/files/Train-And-Val-ICFHR-2016.tgz
+# tar xzf Train-And-Val-ICFHR-2016.tgz
+# wget https://zenodo.org/record/1164045/files/Test-ICFHR-2016.tgz
+# tar xzf Test-ICFHR-2016.tgz
 
 ### Install textFeats ###
 # https://github.com/mauvilsa/textfeats
@@ -36,7 +37,8 @@ if [ ! -d work ]; then
   mkdir work; cd work
   ln -s ../PublicData/Training/page IMAGES-Train
   ln -s ../PublicData/Validation/page IMAGES-Val
-  ln -s ../Test IMAGES-Test
+  ln -s ../Test-ICFHR-2016 IMAGES-Test
+  cd IMAGES-Test; cp -s page/*.xml .; cd -
 else
   cd work
 fi
