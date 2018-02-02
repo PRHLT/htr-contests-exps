@@ -228,9 +228,9 @@ awk '{$2=""; $NF=""; print}' rec.txt > raux; awk '{$2=""; $NF=""; print}' test_g
 rm raux taux
 
 # Computing WER according to the way of the contest
-paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
+paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
 awk '{printf $1"\t"; for (i=2;i<=NF;i++) {if ($i=="<space>") $i=" "; printf $i;} print ""}' rec.txt > rec_word.txt
-paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
+paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
 ( echo -en "WER without LM\t"
   compute-wer --mode=strict ark:taux ark:raux | grep WER ) >> ../RESULTS.txt
 rm raux taux
@@ -270,12 +270,12 @@ laia-netout \
 
   # Computing WER according to the way of the contest
   ln -s ../Line-Transcripts-Test.txt
-  paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
+  paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
   awk '{printf $1"\t"; for (i=2;i<=NF;i++) {if ($i=="<space>") $i=" "; printf $i;} print ""}' hypotheses_t > rec_word.txt
-  paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
+  paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
   ( echo -en "WER  with   LM\t"
     compute-wer --mode=strict ark:taux ark:raux | grep WER ) >> ../../RESULTS.txt
-  rm raux taux
+  rm taux raux
 }
 
 exit 0
