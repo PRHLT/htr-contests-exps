@@ -12,8 +12,10 @@ Handwritten text recognition experiment using the ICFHR 2016 dataset
 
 In the same directory as this readme, download and extract the dataset.
 
-    wget wget https://zenodo.org/record/218236/files/PublicData.tgz
-    tar xzf PublicData.tgz
+    wget https://zenodo.org/record/1164045/files/Train-And-Val-ICFHR-2016.tgz
+    tar xzf Train-And-Val-ICFHR-2016.tgz
+    wget https://zenodo.org/record/1164045/files/Test-ICFHR-2016.tgz
+    tar xzf Test-ICFHR-2016.tgz
 
 ## Install required software
 
