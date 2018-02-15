@@ -30,7 +30,7 @@ In the same directory as this readme, download and extract the dataset.
 
 The experiment script is the file run_exp.sh. If the script is run directly it might work without problems. However, the full execution can take a couple of days and there is a possibility that there is some dependency not included above. So it might be better to run the experiment step by step by copy pasting checking that the execution works correctly.
 
-In the end a RESULTS.txt file would be created that includes the performance measures of the system for the two test sets (38 and 12).
+In the end a RESULTS.txt file would be created that includes the performance measures of the system for the test set.
 
 # Contact person
 
