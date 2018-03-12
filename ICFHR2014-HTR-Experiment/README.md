@@ -32,4 +32,4 @@ In the end a RESULTS.txt file would be created that includes the performance mea
 
 # Contact person
 
-Joan Andreu Sánchez <ahector@prhlt.upv.es>
+Joan Andreu Sánchez <jandreu@prhlt.upv.es>
