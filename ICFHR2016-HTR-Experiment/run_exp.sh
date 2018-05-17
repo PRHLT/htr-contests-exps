@@ -9,13 +9,12 @@ set -e
 # - NVIDIA GPU with at least 6GB of memory
 # - Recent linux distribution (only tested in Ubuntu but should work in others)
 # - CUDA 8
-# - docker-ce (docker runnable without the need of sudo)
-# - nvidia-docker
 
 ### Download and extract dataset ###
-# wget https://zenodo.org/record/218236/files/PublicData.tgz
-# tar xzf PublicData.tgz; rm PublicData.tgz
-# The Test is in: ts@tranScripTorium:/home2/tsdataupv/Bozen/Contest-data/Test/
+# wget https://zenodo.org/record/1164045/files/Train-And-Val-ICFHR-2016.tgz
+# tar xzf Train-And-Val-ICFHR-2016.tgz
+# wget https://zenodo.org/record/1164045/files/Test-ICFHR-2016.tgz
+# tar xzf Test-ICFHR-2016.tgz
 
 ### Install textFeats ###
 # https://github.com/mauvilsa/textfeats
@@ -38,7 +37,8 @@ if [ ! -d work ]; then
   mkdir work; cd work
   ln -s ../PublicData/Training/page IMAGES-Train
   ln -s ../PublicData/Validation/page IMAGES-Val
-  ln -s ../Test IMAGES-Test
+  ln -s ../Test-ICFHR-2016 IMAGES-Test
+  cd IMAGES-Test; cp -s page/*.xml .; cd -
 else
   cd work
 fi
@@ -228,9 +228,9 @@ awk '{$2=""; $NF=""; print}' rec.txt > raux; awk '{$2=""; $NF=""; print}' test_g
 rm raux taux
 
 # Computing WER according to the way of the contest
-paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
+paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
 awk '{printf $1"\t"; for (i=2;i<=NF;i++) {if ($i=="<space>") $i=" "; printf $i;} print ""}' rec.txt > rec_word.txt
-paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
+paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
 ( echo -en "WER without LM\t"
   compute-wer --mode=strict ark:taux ark:raux | grep WER ) >> ../RESULTS.txt
 rm raux taux
@@ -270,12 +270,12 @@ laia-netout \
 
   # Computing WER according to the way of the contest
   ln -s ../Line-Transcripts-Test.txt
-  paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
+  paste <(cut -d " " -f 1 Line-Transcripts-Test.txt) <(cut -d " " -f 2- Line-Transcripts-Test.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
   awk '{printf $1"\t"; for (i=2;i<=NF;i++) {if ($i=="<space>") $i=" "; printf $i;} print ""}' hypotheses_t > rec_word.txt
-  paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > taux
+  paste <(cut -d " " -f 1 rec_word.txt) <(cut -d " " -f 2- rec_word.txt | sed -r "s/[-\xe2\x80\x94.,;:?\xc2\xac=+)\&]/ & /g; s/\(/& /g") > raux
   ( echo -en "WER  with   LM\t"
     compute-wer --mode=strict ark:taux ark:raux | grep WER ) >> ../../RESULTS.txt
-  rm raux taux
+  rm taux raux
 }
 
 exit 0

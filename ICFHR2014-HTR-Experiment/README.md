@@ -1,4 +1,4 @@
-Handwritten text recognition experiment using the ICFHR 2016 dataset
+Handwritten text recognition experiment using the ICFHR 2014 dataset
 
 # Basic system requirements
 
@@ -12,10 +12,8 @@ Handwritten text recognition experiment using the ICFHR 2016 dataset
 
 In the same directory as this readme, download and extract the dataset.
 
-    wget https://zenodo.org/record/1164045/files/Train-And-Val-ICFHR-2016.tgz
-    tar xzf Train-And-Val-ICFHR-2016.tgz
-    wget https://zenodo.org/record/1164045/files/Test-ICFHR-2016.tgz
-    tar xzf Test-ICFHR-2016.tgz
+    wget https://zenodo.org/record/44519/files/BenthamDatasetR0-GT.tbz
+    tar xzf BenthamDatasetR0-GT.tbz
 
 ## Install required software
 
@@ -28,10 +26,10 @@ In the same directory as this readme, download and extract the dataset.
 
 ## Run the experiment script
 
-The experiment script is the file run_exp.sh. If the script is run directly it might work without problems. However, the full execution can take a couple of days and there is a possibility that there is some dependency not included above. So it might be better to run the experiment step by step by copy pasting checking that the execution works correctly.
+The experiment script is the file run_exp.sh. If the script is run directly it might work without problems. However, the full execution can take a day and there is a possibility that there is some dependency not included above. So it might be better to run the experiment step by step by copy pasting checking that the execution works correctly.
 
 In the end a RESULTS.txt file would be created that includes the performance measures of the system for the test set.
 
 # Contact person
 
-Alejandro H. Toselli <ahector@prhlt.upv.es>
+Joan Andreu Sánchez <jandreu@prhlt.upv.es>
