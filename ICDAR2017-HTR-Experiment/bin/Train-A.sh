@@ -70,7 +70,7 @@ done
 
 for i in WORK/TEXT-A/*tab
 do
-  sed 's/\&amp;/ \& /g' $i |  awk '{printf("%s ",$1); for (i=2; i<=NF; i++) printf(" %s",$i);printf("\n");}' > kk
+  sed 's/\&amp;/ \& /g' $i |  awk '{if(NF>1) {printf("%s ",$1); for (i=2; i<=NF; i++) printf(" %s",$i);printf("\n")};}' > kk
   mv kk $i
 done
 
@@ -82,7 +82,8 @@ cat WORK/TEXT-A/*tab > WORK/TEXT-A/index.words
 #Preparing lists of training and validation samples and preparing GTs
 cd WORK
 
-[ -d PARTITIONS ] || mkdir PARTITIONS
+[ -d PARTITIONS ] || {
+mkdir PARTITIONS
 cd PARTITIONS/
 sdiff ../Lines-A/index ../TEXT-A/index | grep -v "<" | grep -v "<" | grep -v "|" | awk '{printf("%s\n",$1)}' > list-A
 
@@ -93,7 +94,9 @@ sed 's/$/.png/g' -i train-A.lst
 sed 's/^/data\//g' -i val-A.lst
 sed 's/$/.png/g' -i val-A.lst
 cd ..
+}
 
+[ -d lang-A/char ] || {
 mkdir -p lang-A/char
 cd lang-A/char
 
@@ -122,6 +125,9 @@ for p in train-A val-A; do cat char.$p.txt | cut -f 2- -d\  | tr \  \\n; done | 
 
 
 cd ../../ 
+}
+
+[ -d models-A ] || { 
 mkdir models-A
 cd models-A
 
@@ -146,16 +152,8 @@ laia-create-model \
 ln -s ../Lines-A/ data
 
 #Train model
-laia-train-ctc \ 
-	--use_distortions true \
-        --batch_size 3 \
-        --progress_table_output train.dat \ 
-        --early_stop_epochs 50 \
-        --learning_rate 0.0003 \
-        --log_level info \
-        --log_file train.log \
-        train.t7 ../lang-A/char/symb.txt ../PARTITIONS/train-A.lst ../lang-A/char/char.tr.txt ../PARTITIONS/val-A.lst ../lang-A/char/char.va.txt 
+laia-train-ctc 	--use_distortions true        --batch_size 3        --progress_table_output train.dat        --early_stop_epochs 50         --learning_rate 0.0003        --log_level info         --log_file train.log        train.t7 ../lang-A/char/symb.txt ../PARTITIONS/train-A.lst ../lang-A/char/char.train-A.txt ../PARTITIONS/val-A.lst ../lang-A/char/char.val-A.txt 
 }
 cd ..
-
+}
 exit 0

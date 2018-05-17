@@ -34,11 +34,22 @@ set -e;
 ### Install BaseLinePage toolkit ###
 # https://github.com/PRHLT/BaseLinePage.git
 
+### Install imgtxtenh toolkit ###
+#https://github.com/mauvilsa/imgtxtenh
+
 ### Install other dependencies ###
 # sudo apt-get install xmlstarlet gawk python
 
+### Download htrsh software ###
+# https://github.com/mauvilsa/htrsh
+
+
 ### Add bin to PATH ###
 export PATH="$(pwd)/bin:$PATH";
+
+### Load htrsh library ###
+. htrsh.inc.sh
+
 
 # Directory where the run.sh script is placed.
 SDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
@@ -71,11 +82,18 @@ rm data/*tgz data/*tar
 Train-A.sh
 echo "The training using the Trian-A material has been completed"
 
+Alignment-B.sh
+echo "The alignment of the Train-B material has been completed"
 
-#./Alignment-B.sh
 
-#./Train-AB.sh
+Train-AB.sh
+echo "The training using the Train-A and th Train-B material has been completed"
 
-#./Recognize-TrackTraditional.sh
+Recognize-TrackTraditional.sh
+echo "The recognition of the traditional track has been completed" 
 
-#./Recognize-AdvancedTrack.sh
+#Recognize-AdvancedTrack.sh
+#echo "The recognition of the advanced track has been completed"
+
+
+

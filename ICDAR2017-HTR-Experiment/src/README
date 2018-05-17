@@ -15,3 +15,10 @@ make
 mv page_format_generate_contour ../../bin/
 make clean
 cd ..
+
+cd AlignGTLines
+make
+mv  align-GTvsHYP ../../bin
+mv scripts/* ../../bin
+make clean
+cd ..

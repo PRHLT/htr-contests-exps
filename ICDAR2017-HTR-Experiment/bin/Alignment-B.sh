@@ -1,40 +1,122 @@
-#!/bin/bash
+#!/bin/bash 
 set -e;
 
+#Train a line detection model and then segment the Train-B material
+#Recognize the detected lines with a model trained using the Train-A material
+#Alignment of the lines with the available trainscripts for the Train-B
+#Author: Verónica Romero <vromero@prhlt.upv.es>
 
-batch_size=3;
-height=96;
-overwrite=false;
+#Download the training data                                                                                                                                                 
+#-Train-A: https://doi.org/10.5281/zenodo.439807
 
-# Directory where the run.sh script is placed.
-SDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-[ "$(pwd)" != "$SDIR" ] && \
-  echo "Please, run this script from the experiment top directory!" && \
-  exit 1;
+### Install textFeats ###
+# https://github.com/mauvilsa/textfeats
 
-# Check the tools
-for tool in page_format_generate_contour; do
-  which "$tool" > /dev/null || \
-    (echo "Required tool $tool was not found!" >&2 && exit 1);
-done;
+### Install Laia ###
+# https://github.com/jpuigcerver/Laia
+
+### Install Kaldi ###
+# https://github.com/kaldi-asr/kaldi
+
+### Install SRILM toolkit ###
+# http://www.speech.sri.com/projects/srilm/
+
+### Install BaseLinePage toolkit ###
+# https://github.com/PRHLT/BaseLinePage.git
+
+### Install imgtxtenh toolkit ###
+#https://github.com/mauvilsa/imgtxtenh
+
+### Install other dependencies ###
+# sudo apt-get install xmlstarlet gawk python
+
+#Add bin to PATH 
+export PATH=$PATH:$(pwd)/bin
+. htrsh.inc.sh
+
+############################################################################################################
+###### Training a line segmentation system using Train-A and performing the segmentation of Train-B ########
+############################################################################################################
 
 
-#Extract corpus
-mkdir -p data;
-mv Train-A.tbz2 data/
 
-[ -d data/corpus ] || \
-  mkdir data/corpus && bunzip2 data/Train-A.tbz2 && tar -xf data/Train-A.tar -C data/corpus;
+#Trainig a line segmentation system using Train-A 
+[ -d $(pwd)/data/Train-B/page ] || {
+mkdir $(pwd)/data/Train-B/page  
+cp $(pwd)/data/Train-B/batch1/page/*xml $(pwd)/data/Train-B/page 
+cp $(pwd)/data/Train-B/batch2/page/*xml $(pwd)/data/Train-B/page
+ln -sf $(pwd)/data/Train-B/batch1/*jpg $(pwd)/data/Train-B/page
+ln -sf $(pwd)/data/Train-B/batch2/*jpg $(pwd)/data/Train-B/page
+}
 
-#Extract lines and preproces them
-[ -d data/corpus/Train-A/page ] || \
-  mkdir data/corpus/Train-A/page  && cp data/corpus/Train-A/*xml data/corpus/Train-A/page;
+cd WORK
+[ -d Segmentation-B ] || mkdir Segmentation-B
+cd Segmentation-B 
 
-ln -s $(pwd)/data/corpus/Train-A/*jpg data/corpus/Train-A/page
-
-for f in data/corpus/Train-A/page/*xml; do 
-page_format_generate_contour -a 75 -d 25 -p $f -o $f ; 
+[ -d prep ] || { 
+mkdir prep
+for f in ../../data/Train-A/page/*.jpg; do
+ n=`basename $f`;
+ imgtxtenh -i $f -o prep/${n} -w 30 -p 0.7 -s 0.5 -S 1;
 done
+}
+
+for f in ../../data/Train-A/page/*xml; do echo `basename ${f/.xml/}`; done  > corpus.lst
+
+[ -d Trees ] || {
+mkdir Trees
+cp -l prep/*.jpg ../../data/Train-A/page/*xml  Trees 
+trainForestNPages.sh corpus.lst Trees/ 50 ../../segmentation.cnf 
+}
+
+#Using the trained model the pages of the Train-B are segmented
+[ -d Segmented ] || {
+
+for f in ../../data/Train-B/page/*.jpg; do 
+ n=`basename $f`;
+ ~/HTR/SRC/imgtxtenh/imgtxtenh -i $f -o prep/${n} -w 30 -p 0.7 -s 0.5 -S 1; 
+done
+
+for f in ../../data/Train-B/page/*xml ; do echo `basename ${f/.xml/}`; done > Test.lst
+
+mkdir Segmented 
+cd Segmented
+ln -s ../prep/*jpg .
+ln -s ../../../data/Train-B/page/*xml .
+cd ..
+}
+
+[ -d Segmented_icdar_50.ert ] || {
+test.sh Test.lst Segmented/ Trees/icdar_50.ert ../../segmentation.cnf
+} 
+
+cd Segmented_icdar_50.ert
+[ -d NewPage ] || { mkdir NewPage
+
+for f in *xml; do 
+page_format_generate_contour -a 75 -d 25 -p $f -o NewPage/$f ; 
+done
+}
+cd ../..
+
+#Extracting the detected lines
+[ -d Lines-B ] || {
+
+cd ./Segmentation-B/Segmented_icdar_50.ert/NewPage
+
+[ -d reorderXML ] || { mkdir reorderXML
+
+for f in *xml; do 
+        htrsh_pagexml_sort_lines < $f > k.xml;
+        htrsh_pagexml_relabel < k.xml > reorderXML/$f; 
+done
+
+cd reorderXML
+ln -s ../../../../../data/Train-B/page/*.jpg .
+cd ..
+}
+
+cd reorderXML
 
 textFeats_cfg='
 TextFeatExtractor: {
@@ -51,127 +133,31 @@ TextFeatExtractor: {
 }';
 
 
-[ -d LINES ] || mkdir LINES/
+mkdir ../../../../Lines-B
 
 
 export htrsh_valschema="no"
 
-for i in data/corpus/Train-A/page/*xml
+for i in *xml
 do
   N=`basename $i .xml`
-  textFeats --cfg <( echo "$textFeats_cfg" ) --outdir LINES/ $i
+  textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ../../../../Lines-B/ $i
 done
+cd ../../../../
+}
 
-mkdir TEXT
-for i in data/corpus/Train-A/page/*xml
-do
-  N=`basename $i .xml`;
-  htrsh_pagexml_textequiv $i -f tab > TEXT/$N.tab;
-done
-
-
-mkdir PARTITIONS
-cd LINES
-ls -1  | sed 's/\.png//' > ../PARTITIONS/train-lst
-cd ..
-
-# For cleaning the text
-cd TEXT/
-for i in *tab
-do
-  sed 's/\&amp;/ \& /g' $i | awk '{printf("%s ",$1); for (i=2; i<=NF; i++) printf(" %s",$i);printf("\n");}' > kk
-  mv kk $i
-done
-
-# Preparing data
-cd TEXT
-cat *tab | awk '{printf("%s\n",$1)}' | sort > index
-cat *tab > index.words
-cd ../LINES
-ls -1 | sed 's/\.png//g' |sort > index
-cd ../PARTITIONS/
-sdiff ../LINES/index ../TEXT/index | grep -v "<" | grep -v "<" | grep -v "|" | awk '{printf("%s\n",$1)}' > list
-
-head -1103 list > tr.txt
-head -1236 list | tail -133 > va.txt
-cat list  | tail -143 > te.txt
-cd ..
-
-# Create data dir
-mkdir -p htr/lang/char
-cd htr/lang/char
+############################################################################################################
+###### Recognition of Train-B using the model trained with Train-A material ################################
+############################################################################################################
 
 
-for p in te tr va;
-do
-grep -f ../../../PARTITIONS/$p.txt ../../../TEXT/index.words | \
-awk '{
-  printf("%s", $1);
-  for(i=2;i<=NF;++i) {
-    for(j=1;j<=length($i);++j)
-      printf(" %s", substr($i, j, 1));
-    if (i < NF) printf(" <space>");
-  }
-  printf("\n");
-}' | sed 's/"/'\'' '\''/g;s/#/<stroke>/g' > char.$p.txt
-done
+[ -d decode-B ] || {
+mkdir decode-B
+cd decode-B
+ln -s ../Lines-B/ data
+for f in data/*.png; do  echo $f; done > batch1-2.lst
+laia-decode --batch_size 3  --symbols_table ../lang-A/char/symb.txt ../models-A/train.t7 batch1-2.lst  > test.txt
 
-for p in tr va; do cat char.$p.txt | cut -f 2- -d\  | tr \  \\n; done | sort -u -V | awk 'BEGIN{
-  N=0;
-  printf("%-12s %d\n", "<eps>", N++);
-  printf("%-12s %d\n", "<ctc>", N++);
-}NF==1{
-  printf("%-12s %d\n", $1, N++);
-}' >  symb.txt
-
-cd ../../ 
-mkdir models
-cd models
-
-
-NSYMBOLS=$(sed -n '${ s|.* ||; p; }' "../lang/char/symb.txt");
-  # Create model
-laia-create-model \
-      --cnn_batch_norm true \
-      --cnn_kernel_size 3 \
-      --cnn_maxpool_size 2,2 2,2 0 2,2 \
-      --cnn_num_features 16 16 32 32 \
-      --cnn_type leakyrelu \
-      --rnn_type blstm --rnn_num_layers 3 \
-      --rnn_num_units 256 \
-      3 64  "$NSYMBOLS" train.t7 \
-      &> init.log;
-
-cd ..
-ln -s ../LINES/ data
-sed 's/^/data\//g' ../PARTITIONS/tr.txt  | sed 's/$/.png/g'  > tr.lst
-sed 's/^/data\//g' ../PARTITIONS/va.txt  | sed 's/$/.png/g'  > va.lst
-
-laia-train-ctc \ 
-	--use_distortions true \
-        --batch_size 3 \
-        --progress_table_output train.dat \ 
-        --early_stop_epochs 50 \
-        --learning_rate 0.0005 \
-        --log_level info \
-        --log_file train.log \
-        models/train.t7 lang/char/symb.txt tr.lst lang/char/char.tr.txt va.lst lang/char/char.va.txt 
-
-
-
-
-
-mkdir -p decode/{char,word};
-cd decode
-sed 's/^/data\//g' ../../PARTITIONS/te.txt  | sed 's/$/.png/g'  > te.lst
-ln -s ../../LINES/ data
-
-
-# Get char-level transcript hypotheses
-laia-decode --batch_size 3  --symbols_table ../lang/char/symb.txt ../models/train.t7 te.lst > char/test.txt 
-
-
-# Get word-level transcript hypotheses
 awk '{
   printf("%s ", $1);
   for (i=2;i<=NF;++i) {
@@ -181,30 +167,88 @@ awk '{
       printf("%s", $i);
   }
   printf("\n");
-}' char/test.txt > word/test.txt;
+}' test.txt > wordtest.txt;
+cd ..
+}
+
+
+
+############################################################################################################
+###### Alignment of detected lines with the transcription available ########################################
+############################################################################################################
+
+[ -d Alignments-B ] || mkdir Alignments-B
+cd Alignments-B
+
+[ -d TXT  ] || {
+
+mkdir TXT
+
+for f in ../../data/Train-B/page/*xml; do awk '{if($0~"<Unicode>"){trans="si";};if(trans=="si"){print $0;};if($0~"</Unicode>"){trans="no";}}' $f > TXT/`basename ${f/xml/txt}`; done 
+
+cd TXT
+for f in *; do sed 's/<Unicode>//g;s/<\/Unicode>//g' -i $f; done 
+for f in *; do awk '{if(NF>0) print $0 > "k"}' $f ; mv k $f; done 
+
+cd ..
+}
+[ -f wordtest.txt ] || ln -s ../decode-B/wordtest.txt .
+
+[ -d REC ] || {
+
+mkdir REC
+
+for i in {1..223739};do 
+  head -$i wordtest.txt | tail -1 |   awk '{for(i=2;i<NF;i++) printf($i" ") > "REC/"$1".rec"; print $NF > "REC/"$1".rec"}' 
+done
+}
+
+
+[ -d HYP ] || pre-RecHyp.sh TXT REC HYP 
+
+
+for t in TXT/*.txt; do
+n=`basename ${t/.txt/}`;
+align-GTvsHYP -v 2 -t 0.8 $t HYP/${n}_1hyp.inf  >> alineamientos.txt
+done
+
+
+cd TXT
+for f in *; do  awk -v n=${f/.txt/} '{if(NF>0){print $0 > n"_"NR".txt"}}' $f; done
+cd ..
+
+
+calcula-align.sh alineamientos.txt 0.6
+
+chmod +x alineamiento_0.6.sh
+cd TXT
+../alineamiento_0.6.sh
+
+cd ..
+mkdir TXT_0.6
+mv TXT/010*.tab TXT_0.6
+mv TXT/011*.tab TXT_0.6
+mv TXT/012*.tab TXT_0.6
+mv TXT/013*.tab TXT_0.6
+mv TXT/014*.tab TXT_0.6
+mv TXT/015*.tab TXT_0.6
+mv TXT/016*.tab TXT_0.6
+mv TXT/017*.tab TXT_0.6
+mv TXT/018*.tab TXT_0.6
+mv TXT/019*.tab TXT_0.6
+mv TXT/02*.tab TXT_0.6
+mv TXT/*.tab TXT_0.6
 
 
 
 
 
-# Incluir en los ficheros PAGE
- cd word
- cp -r  ../../../data/corpus/Train-A/page .
- mkdir newpage
- for f in page/*; do echo $f; done > DECODE_LIST
-  
- awk '{page=$1; gsub("\\..*","",page); gsub(page"\\.","",$1);  print $0 >> page".txt" }' test.txt 
 
- for f in $(<DECODE_LIST); do 
-     nn=`basename ${f/xml/txt}`;
-    awk -v p=$nn 'BEGIN{while(getline < p) {line=$1; $1=""; l[line]=$0}}{if($0~"<TextLine id="){ line=$2; gsub("id=\"","",line); gsub("\".*","",line);print $0}else if($0~"Unicode"){print "                                <Unicode>"l[line]"</Unicode>"} else print $0;}' $f > newpage/${nn/txt/xml};
- done
- cd newpage
- ln -s ../page/*jpg .
- cd ..
- rm 00*txt
 
-#Calcular el error
- ../../../scripts/Create_WER-PAGE.sh newpage/ page/
+
+
+
+
+
 
 

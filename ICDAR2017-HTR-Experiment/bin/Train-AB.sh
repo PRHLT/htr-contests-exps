@@ -8,117 +8,63 @@ batch_size=3;
 height=96;
 overwrite=false;
 
-# Directory where the run.sh script is placed.
-SDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-[ "$(pwd)" != "$SDIR" ] && \
-  echo "Please, run this script from the experiment top directory!" && \
-  exit 1;
+cd WORK
 
-# Check the tools
-for tool in page_format_generate_contour; do
-  which "$tool" > /dev/null || \
-    (echo "Required tool $tool was not found!" >&2 && exit 1);
-done;
-
-
-#Extract corpus
-mkdir -p data;
-mv Train-A.tbz2 data/
-
-[ -d data/corpus ] || \
-  mkdir data/corpus && bunzip2 data/Train-A.tbz2 && tar -xf data/Train-A.tar -C data/corpus;
-
-#Extract lines and preproces them
-[ -d data/corpus/Train-A/page ] || \
-  mkdir data/corpus/Train-A/page  && cp data/corpus/Train-A/*xml data/corpus/Train-A/page;
-
-ln -s $(pwd)/data/corpus/Train-A/*jpg data/corpus/Train-A/page
-
-for f in data/corpus/Train-A/page/*xml; do 
-page_format_generate_contour -a 75 -d 25 -p $f -o $f ; 
-done
-
-textFeats_cfg='
-TextFeatExtractor: {
-  type            = "raw";
-  format          = "img";
-  fpgram          = true;
-  fcontour        = true;
-  fcontour_dilate = 0;
-  padding         = 12;
-  normheight      = 64;
-  momentnorm      = true;
-  enh_win         = 30;
-  enh_prm         = [ 0.1, 0.2, 0.4 ];
-}';
-
-
-[ -d LINES ] || mkdir LINES/
-
-
-export htrsh_valschema="no"
-
-for i in data/corpus/Train-A/page/*xml
-do
-  N=`basename $i .xml`
-  textFeats --cfg <( echo "$textFeats_cfg" ) --outdir LINES/ $i
-done
 
 mkdir TEXT
-for i in data/corpus/Train-A/page/*xml
-do
-  N=`basename $i .xml`;
-  htrsh_pagexml_textequiv $i -f tab > TEXT/$N.tab;
-done
-
-
-mkdir PARTITIONS
-cd LINES
-ls -1  | sed 's/\.png//' > ../PARTITIONS/train-lst
-cd ..
-
-# For cleaning the text
-cd TEXT/
-for i in *tab
-do
-  sed 's/\&amp;/ \& /g' $i | awk '{printf("%s ",$1); for (i=2; i<=NF; i++) printf(" %s",$i);printf("\n");}' > kk
-  mv kk $i
-done
-
-# Preparing data
 cd TEXT
-cat *tab | awk '{printf("%s\n",$1)}' | sort > index
-cat *tab > index.words
-cd ../LINES
-ls -1 | sed 's/\.png//g' |sort > index
-cd ../PARTITIONS/
-sdiff ../LINES/index ../TEXT/index | grep -v "<" | grep -v "<" | grep -v "|" | awk '{printf("%s\n",$1)}' > list
+for f in ../Train-A/TEXT/*.tab; do
+        awk '{for(i=2;i<=NF;i++) printf("%s ",$i) > $1".tab" ; printf("\n") > $1".tab" ;}' $f
+done
 
-head -1103 list > tr.txt
-head -1236 list | tail -133 > va.txt
-cat list  | tail -143 > te.txt
+ln -s ../Train-B/Alineamientos/TXT-0.7/*.tab .
+ls -1 | sed 's/\.tab//g' | sort > index
 cd ..
 
+mkdir  LINES
+cd LINES
+ln -s ../Train-A/LINES/*.png .
+ln -s ../Train-B/LINES/*.png .
+ls -1 | sed 's/\.png//g' |sort > index
+cd ..
+
+cd PARTITIONS
+sdiff ../LINES/index ../TEXT/index | grep -v "<" | grep -v "<" | grep -v "|" | awk '{printf("%s\n",$1)}' > list
+head -85000 list > tr.lst
+tail -1254 list > va.lst
+sed 's/^/data\//g' -i tr.lst
+sed 's/$/.png/g' -i tr.lst
+sed 's/^/data\//g' -i va.lst
+sed 's/$/.png/g' -i va.lst
+cat tr.lst va.lst >> total.lst
+
+
+cd ..
+
+cd ..
 # Create data dir
-mkdir -p htr/lang/char
-cd htr/lang/char
+mkdir -p lang-AB/char
+cd lang-AB/char
 
-
-for p in te tr va;
+for p in tr va;
 do
-grep -f ../../../PARTITIONS/$p.txt ../../../TEXT/index.words | \
-awk '{
-  printf("%s", $1);
-  for(i=2;i<=NF;++i) {
+for f in $(<../../PARTITIONS/${p}.lst); do n=`basename $f`; cat ../../TEXT/${n/png/tab} | \
+awk -v n=$n '{
+  printf("%s", n);
+  for(i=1;i<=NF;++i) {
     for(j=1;j<=length($i);++j)
       printf(" %s", substr($i, j, 1));
     if (i < NF) printf(" <space>");
   }
   printf("\n");
-}' | sed 's/"/'\'' '\''/g;s/#/<stroke>/g' > char.$p.txt
+}' | sed 's/"/'\'' '\''/g;s/#/<stroke>/g' >> char.${p}.txt
+
 done
 
-for p in tr va; do cat char.$p.txt | cut -f 2- -d\  | tr \  \\n; done | sort -u -V | awk 'BEGIN{
+cat char.train.txt >> char.total.txt
+cat char.va.txt >> char.total.txt
+
+for p in tr va; do cat char.${p}.txt | cut -f 2- -d\  | tr \  \\n; done | sort -u -V | awk 'BEGIN{
   N=0;
   printf("%-12s %d\n", "<eps>", N++);
   printf("%-12s %d\n", "<ctc>", N++);
@@ -126,87 +72,98 @@ for p in tr va; do cat char.$p.txt | cut -f 2- -d\  | tr \  \\n; done | sort -u 
   printf("%-12s %d\n", $1, N++);
 }' >  symb.txt
 
+
+
+NSYMBOLS=$(sed -n '${ s|.* ||; p; }' "symb.txt");
 cd ../../ 
-mkdir models
-cd models
+mkdir models-AB
+cd models-AB
 
 
 NSYMBOLS=$(sed -n '${ s|.* ||; p; }' "../lang/char/symb.txt");
   # Create model
 laia-create-model \
       --cnn_batch_norm true \
-      --cnn_kernel_size 3 \
+      --cnn_kernel_size 16 \
       --cnn_maxpool_size 2,2 2,2 0 2,2 \
-      --cnn_num_features 16 16 32 32 \
+      --cnn_num_features 16 32 64 96 \
       --cnn_type leakyrelu \
       --rnn_type blstm --rnn_num_layers 3 \
-      --rnn_num_units 256 \
+      --rnn_num_units 512 \
       3 64  "$NSYMBOLS" train.t7 \
       &> init.log;
 
-cd ..
 ln -s ../LINES/ data
-sed 's/^/data\//g' ../PARTITIONS/tr.txt  | sed 's/$/.png/g'  > tr.lst
-sed 's/^/data\//g' ../PARTITIONS/va.txt  | sed 's/$/.png/g'  > va.lst
-
+ #Train model
 laia-train-ctc \ 
 	--use_distortions true \
-        --batch_size 3 \
+        --batch_size 16 \
         --progress_table_output train.dat \ 
         --early_stop_epochs 50 \
         --learning_rate 0.0005 \
         --log_level info \
         --log_file train.log \
-        models/train.t7 lang/char/symb.txt tr.lst lang/char/char.tr.txt va.lst lang/char/char.va.txt 
+       train.t7 ../lang-AB/char/symb.txt ../PARTITIONS/total.lst ../lang/char/char.total.txt ../PARTITIONS/val-A.lst ../lang-AB/char/char.va.txt 
+
+#Include Languaje model
+
+# Force alignment
+
+laia-force-align --batch_size "16"  --batcher_cache_gpu 1  --log_level info  --log_also_to_stderr info   train.t7 ../lang-AB/char/symb.txt ../PARTITIONS/total.lst ../lang-AB/char/char.total.txt  align_output.txt priors.txt
+
+
+# Prepare Kaldi's lang directories
+# Preparing Lexic (L)
+cd ../lang-AB
+awk 'NR>1{print $1}' ./char/symb.txt > chars.lst
+mkdir lm
+
+BLANK_SYMB="<ctc>"                        # BLSTM non-character symbol
+WHITESPACE_SYMB="<space>"                 # White space symbol
+DUMMY_CHAR="<DUMMY>"                      # Especial HMM used for modelling "</s>" end-sentence
+
+prepare_lang_cl-ds.sh lm chars.lst "${BLANK_SYMB}" "${WHITESPACE_SYMB}" "${DUMMY_CHAR}"
+
+cd lm/
+
+# Preparing LM (G)
+cat ../char/char.total.txt | cut -d " " -f 2- | ngram-count -vocab ../chars.lst -text - -lm lang/LM.arpa -order 8 -wbdiscount1 -kndiscount -interpolate
+prepare_lang_test-ds.sh lang/LM.arpa lang lang_test "$DUMMY_CHAR"
+
+##########################################################################################################
+# Prepare HMM models
+##########################################################################################################
+# Create HMM topology file
+cd ../../models-AB
+mkdir HMMs/train
+
+phones_list=( $(cat ../lang-AB/lm/lang_test/phones/{,non}silence.int) )
+featdim=$(feat-to-dim scp:test/confMats_alp0.3.scp - 2>/dev/null)
+dummyID=$(awk -v d="$DUMMY_CHAR" '{if (d==$1) print $2}' ../lang-AB/lm/lang/phones.txt)
+blankID=$(awk -v bs="${BLANK_SYMB}" '{if (bs==$1) print $2}' ../lang-AB/lm/lang/pdf_blank.txt)
+
+HMM_LOOP_PROB=0.5                         # Self-Loop HMM-state probability
+HMM_NAC_PROB=0.5                          # BLSTM-NaC HMM-state probability
+
+create_proto_rnn-ds.sh $featdim ${HMM_LOOP_PROB} ${HMM_NAC_PROB} HMMs/train ${dummyID} ${blankID} ${phones_list[@]}
+
+
+# Compose FSTs
+############################################################################################################
+
+mkdir HMMs/test
+mkgraph.sh --mono --transition-scale 1.0 --self-loop-scale 1.0 ../lang/lm/lang_test HMMs/train/new.mdl HMMs/train/new.tree HMMs/test/graph
 
 
 
 
 
-mkdir -p decode/{char,word};
-cd decode
-sed 's/^/data\//g' ../../PARTITIONS/te.txt  | sed 's/$/.png/g'  > te.lst
-ln -s ../../LINES/ data
-
-
-# Get char-level transcript hypotheses
-laia-decode --batch_size 3  --symbols_table ../lang/char/symb.txt ../models/train.t7 te.lst > char/test.txt 
-
-
-# Get word-level transcript hypotheses
-awk '{
-  printf("%s ", $1);
-  for (i=2;i<=NF;++i) {
-    if ($i == "<space>")
-      printf(" ");
-    else
-      printf("%s", $i);
-  }
-  printf("\n");
-}' char/test.txt > word/test.txt;
 
 
 
 
 
-# Incluir en los ficheros PAGE
- cd word
- cp -r  ../../../data/corpus/Train-A/page .
- mkdir newpage
- for f in page/*; do echo $f; done > DECODE_LIST
-  
- awk '{page=$1; gsub("\\..*","",page); gsub(page"\\.","",$1);  print $0 >> page".txt" }' test.txt 
 
- for f in $(<DECODE_LIST); do 
-     nn=`basename ${f/xml/txt}`;
-    awk -v p=$nn 'BEGIN{while(getline < p) {line=$1; $1=""; l[line]=$0}}{if($0~"<TextLine id="){ line=$2; gsub("id=\"","",line); gsub("\".*","",line);print $0}else if($0~"Unicode"){print "                                <Unicode>"l[line]"</Unicode>"} else print $0;}' $f > newpage/${nn/txt/xml};
- done
- cd newpage
- ln -s ../page/*jpg .
- cd ..
- rm 00*txt
 
-#Calcular el error
- ../../../scripts/Create_WER-PAGE.sh newpage/ page/
 
 
