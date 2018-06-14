@@ -166,7 +166,7 @@ laia-docker train-ctc \
 ### Extract line images from test ###
 echo "Extracting test text line images";
 for list in 38 12; do
-  textFeats --cfg feats.cfg --outdir lines/test --featlist data/TEST/$list-pages-dataset/*.xml \
+  textFeats-docker --cfg feats.cfg --outdir lines/test --featlist data/TEST/$list-pages-dataset/*.xml \
     | tee lists/test-${list}_lines.lst;
 done 2> logs/feats_test.log > lists/test-all_lines.lst;
 
